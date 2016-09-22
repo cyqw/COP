@@ -389,18 +389,11 @@ def gen_api_node(node, path, apis, definitions, config = True):
             #
             # 		   /config/Context/{uuid}/_topology/{topology_uuid}/_link/{link_uuid}/_transferCost/costCharacteristic/{costAlgorithm}/
             if key:
-                match = re.search(r"\{([A-Za-z0-9_]+)\}", path)
-                if match and key == match.group(1):
-                    if node.arg[0] == '_':
-                        new_param_name = node.arg[1:] +'_'+ to_lower_camelcase(key)
-                    else:
-                        new_param_name = node.arg[1:] +'_'+ to_lower_camelcase(key)
-                    path += '{'+new_param_name+ '}/'
-                    for child in node.i_children:
-                        if child.arg == key:
-                            child.arg = new_param_name
-                else:
-                    path += '{' + to_lower_camelcase(key) + '}/'
+                    path = path[:-1]
+                    parentlist = getParentList(node) 
+                    f3 = lambda x: '{' + parentlist + to_lower_camelcase(x) + '}'
+                    
+                    path += '=' + ",".join(map(f3, key.split())) + '/'
 
             schema_list = {}
             gen_model([node], schema_list, config)
@@ -426,7 +419,7 @@ def gen_api_node(node, path, apis, definitions, config = True):
             else:
                 schema = schema[to_lower_camelcase(node.arg)]
 
-        apis['/config'+str(path)] = print_api(node, config, schema, path)
+        apis['/data'+str(path)] = print_api(node, config, schema, path)
 
     elif node.keyword == 'rpc':
         schema_out = dict()
@@ -476,6 +469,13 @@ def gen_api_node(node, path, apis, definitions, config = True):
     if hasattr(node, 'i_children'):
         gen_apis(node.i_children, path, apis, definitions, config)
 
+def getParentList(node):
+    path = ""
+    while node:
+        if node.keyword == "list":
+            path = node.arg + "_" + path
+        node = node.parent
+    return path
 
 def gen_typedefs(typedefs):
     for typedef in typedefs:
